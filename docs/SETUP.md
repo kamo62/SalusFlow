@@ -1,143 +1,76 @@
 # Setup Guide
 
 ## Prerequisites
-- Node.js (v18 or later)
-- pnpm (recommended) or npm
+- Node.js 20.x or later
+- PNPM (preferred over npm)
 - Git
 
 ## Initial Setup
-
-1. Install pnpm if not already installed:
-   ```bash
-   npm install -g pnpm
-   ```
-
-2. Clone the repository:
-   ```bash
-   git clone <repository-url>
-   cd <project-directory>
-   ```
-
-3. Install dependencies:
-   ```bash
-   pnpm install
-   ```
-
-4. Set up environment variables:
-   ```bash
-   cp .env.example .env
-   ```
-
-## Environment Variables
-
-Your `.env` should include:
-```env
-# Database URLs
-DATABASE_URL="postgresql://username:password@localhost:5432/practice_management"
-DIRECT_URL="postgresql://username:password@localhost:5432/practice_management"
-
-# Supabase Configuration
-NEXT_PUBLIC_SUPABASE_URL="https://your-project.supabase.co"
-NEXT_PUBLIC_SUPABASE_ANON_KEY="your-anon-key"
-
-# Application Settings
-NODE_ENV="development"
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd salusflow
 ```
 
-## Development Workflow
+2. Install dependencies:
+```bash
+pnpm install
+```
 
-1. Start the development server:
-   ```bash
-   pnpm dev
-   ```
+## Environment Setup
+1. Copy the example environment file:
+```bash
+cp .env.example .env
+```
 
-2. Run type checking:
-   ```bash
-   pnpm type-check
-   ```
+2. Fill in the required environment variables in `.env`
 
-3. Run linting:
-   ```bash
-   pnpm lint
-   ```
+## Development
+```bash
+pnpm dev     # Start development server
+pnpm build   # Build for production
+pnpm start   # Start production server
+```
 
-4. Format code:
-   ```bash
-   pnpm format
-   ```
+## Testing
+The project uses Jest and React Testing Library for testing.
 
-## Database Setup
+### Test Structure
+```
+src/
+  __tests__/              # All test files
+    components/           # Component tests
+    utils/               # Test utilities
+    __mocks__/           # Mock files
+```
 
-1. Set up Supabase:
-   - Create account at [https://supabase.com](https://supabase.com)
-   - Create new project
-   - Copy Project URL and anon key to `.env`
+### Running Tests
+```bash
+pnpm test           # Run tests with coverage
+pnpm test:watch     # Run tests in watch mode
+pnpm test:ci        # Run tests in CI mode
+```
 
-2. Initialize Prisma:
-   ```bash
-   pnpm prisma generate
-   pnpm prisma migrate dev
-   ```
+### Writing Tests
+- Component tests should be placed in `src/__tests__/components/`
+- Use the provided test utilities from `src/__tests__/utils/test-utils.tsx`
+- Follow the existing test patterns for consistency
 
-3. (Optional) Open Prisma Studio:
-   ```bash
-   pnpm prisma studio
-   ```
+### Test Configuration
+- Jest configuration is in `jest.config.ts`
+- Test setup is in `jest.setup.ts`
+- Mock files are in `src/__tests__/__mocks__/`
+
+## Continuous Integration
+The project uses GitHub Actions for CI:
+- Runs on push to main and pull requests
+- Performs type checking
+- Runs linting
+- Runs tests
+- Builds the project
 
 ## Common Issues
-
-1. **Node Version**
-   - Use Node.js v18 or later
-   - Recommended to use nvm for Node.js version management
-
-2. **Package Manager**
-   - pnpm is recommended for better performance and disk space usage
-   - If using npm, delete pnpm-lock.yaml first
-
-3. **Environment Variables**
-   - Ensure all required variables are set in `.env`
-   - Check for any missing values
-
-4. **Build Issues**
-   - Clear `.next` directory: `pnpm clean`
-   - Reinstall dependencies: `pnpm install`
-
-## Scripts
-
-Available npm scripts:
-```bash
-pnpm dev          # Start development server
-pnpm build        # Build for production
-pnpm start        # Start production server
-pnpm lint         # Run ESLint
-pnpm type-check   # Run TypeScript compiler
-pnpm format       # Format code with Prettier
-pnpm clean        # Clean build artifacts
-```
-
-## VS Code Setup
-
-Recommended extensions:
-- ESLint
-- Prettier
-- Prisma
-- Tailwind CSS IntelliSense
-- TypeScript and JavaScript
-
-Settings:
-```json
-{
-  "editor.formatOnSave": true,
-  "editor.defaultFormatter": "esbenp.prettier-vscode",
-  "editor.codeActionsOnSave": {
-    "source.fixAll.eslint": true
-  }
-}
-```
-
-## Next Steps
-
-1. Set up your IDE with recommended extensions
-2. Familiarize yourself with the project structure
-3. Review the documentation in `/docs`
-4. Start with the authentication implementation
+If you encounter any issues, try:
+1. Clearing the Next.js cache: `pnpm clean`
+2. Removing and reinstalling dependencies: `rm -rf node_modules && pnpm install`
+3. Checking your Node.js version matches the project requirements
