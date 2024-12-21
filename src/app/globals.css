@@ -1,0 +1,86 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+}
+
+/* Smooth theme transitions */
+* {
+  transition-property: background-color, border-color, color, fill, stroke;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+/* Disable transitions on page load */
+.no-transitions * {
+  transition: none !important;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  @apply w-2 h-2;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-background-secondary dark:bg-background-dark;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-primary dark:bg-primary-dark rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-primary/90 dark:bg-primary-dark/90;
+}
+
+/* Selection styling */
+::selection {
+  @apply bg-primary text-white dark:bg-primary-dark dark:text-white;
+}
+
+/* Focus outline styling */
+*:focus-visible {
+  @apply outline-none ring-2 ring-primary dark:ring-primary-dark ring-offset-2 ring-offset-background dark:ring-offset-background-dark;
+}
+
+/* Form elements */
+input, textarea, select {
+  @apply border-input dark:border-input-dark bg-background dark:bg-background-dark text-foreground dark:text-foreground-dark-primary rounded-md;
+}
+
+/* Buttons */
+.btn-primary {
+  @apply bg-primary text-white hover:bg-primary/90 dark:bg-primary-dark dark:hover:bg-primary-dark/90 rounded-md px-6 py-3;
+}
+
+.btn-secondary {
+  @apply border-2 border-primary text-primary hover:bg-primary/10 dark:border-secondary dark:text-secondary dark:hover:bg-secondary/10 rounded-md px-6 py-3;
+}
+
+/* Typography */
+h1 {
+  @apply text-h1 font-bold text-foreground dark:text-foreground-dark-primary;
+}
+
+h2 {
+  @apply text-h2 font-semibold text-foreground dark:text-foreground-dark-primary;
+}
+
+p {
+  @apply text-base text-foreground-muted dark:text-foreground-dark-secondary;
+}
+
+/* Navigation */
+nav {
+  @apply h-nav bg-background dark:bg-background-dark-secondary border-b border-border dark:border-border-dark;
+}
+
+/* Cards */
+.card {
+  @apply bg-card text-card-foreground dark:bg-card-dark dark:text-card-dark-foreground border border-border dark:border-border-dark rounded-md p-element shadow-sm;
+}
+ 

@@ -1,0 +1,119 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+.yarn/install-state.gz
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+/build
+.next
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+Thumbs.db
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# local env files
+.env
+.env*.local
+.env.development
+.env.test
+.env.production
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Prisma
+/prisma/*.db
+/prisma/migrations/
+*.sqlite
+*.sqlite-journal
+
+# Supabase
+/supabase/.branches/
+/supabase/.temp/
+.supabase/
+
+# PWA
+**/public/sw.js
+**/public/workbox-*.js
+**/public/worker-*.js
+**/public/sw.js.map
+**/public/workbox-*.js.map
+**/public/worker-*.js.map
+
+# Logs
+logs
+*.log
+
+# Cache
+.cache/
+.next/cache/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Optional stylelint cache
+.stylelintcache
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+[Dd]esktop.ini
+
+# Temporary files
+*.tmp
+*.temp
+.temp/
+tmp/
+
+# Build artifacts
+dist/
+build/
+*.tgz
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# Local SSL certificates
+*.pem
+*.key
+*.crt
