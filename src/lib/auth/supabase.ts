@@ -1,139 +1,91 @@
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import type { Database } from '@/types/supabase'
+import { createBrowserClient } from '@supabase/ssr'
 
-// Export the Supabase client
-export const supabase = createClientComponentClient<Database>()
+const supabase = createBrowserClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
 
 export async function signIn(email: string, password: string) {
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   })
-  if (error) throw error
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  if (!data.user) {
+    throw new Error('No user returned from sign in')
+  }
+
   return data
 }
 
-export async function signUp(email: string, password: string, metadata: { name: string; role: string }) {
+export async function signUp(email: string, password: string) {
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
-    options: {
-      emailRedirectTo: `${window.location.origin}/auth/verify-email`,
-      data: metadata,
-    },
   })
-  if (error) throw error
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
   return data
 }
 
-export async function signOut() {
-  const { error } = await supabase.auth.signOut()
-  if (error) throw error
-}
-
 export async function resetPassword(email: string) {
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${window.location.origin}/auth/reset-password`,
-  })
-  if (error) throw error
+  const { data, error } = await supabase.auth.resetPasswordForEmail(email)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data
 }
 
-export async function updatePassword(newPassword: string) {
-  const { error } = await supabase.auth.updateUser({
-    password: newPassword,
+export async function updatePassword(password: string) {
+  const { data, error } = await supabase.auth.updateUser({
+    password,
   })
-  if (error) throw error
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data
 }
 
 export async function verifyEmail(token: string, email: string) {
-  const { error } = await supabase.auth.verifyOtp({
-    token,
+  const { data, error } = await supabase.auth.verifyOtp({
+    token_hash: token,
     type: 'email',
     email,
   })
-  if (error) throw error
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return data
 }
 
 export async function resendVerificationEmail(email: string) {
-  const { error } = await supabase.auth.resend({
+  const { data, error } = await supabase.auth.resend({
     type: 'signup',
     email,
-    options: {
-      emailRedirectTo: `${window.location.origin}/auth/verify-email`,
-    },
   })
-  if (error) throw error
-}
 
-// Password validation
-export function validatePassword(password: string): { isValid: boolean; errors: string[] } {
-  const errors: string[] = []
-  
-  if (password.length < 8) {
-    errors.push('Password must be at least 8 characters long')
-  }
-  if (!/[A-Z]/.test(password)) {
-    errors.push('Password must contain at least one uppercase letter')
-  }
-  if (!/[a-z]/.test(password)) {
-    errors.push('Password must contain at least one lowercase letter')
-  }
-  if (!/[0-9]/.test(password)) {
-    errors.push('Password must contain at least one number')
-  }
-  if (!/[!@#$%^&*]/.test(password)) {
-    errors.push('Password must contain at least one special character (!@#$%^&*)')
+  if (error) {
+    throw new Error(error.message)
   }
 
-  return {
-    isValid: errors.length === 0,
-    errors,
-  }
+  return data
 }
 
-// Session management
-export async function getSession() {
-  const { data: { session }, error } = await supabase.auth.getSession()
-  if (error) throw error
-  return session
-}
-
-export async function refreshSession() {
-  const { data: { session }, error } = await supabase.auth.refreshSession()
-  if (error) throw error
-  return session
-}
-
-// User management
-export async function updateUserMetadata(metadata: { [key: string]: any }) {
-  const { data: { user }, error } = await supabase.auth.updateUser({
-    data: metadata,
-  })
-  if (error) throw error
-  return user
-}
-
-// Types
-export type AuthError = {
-  message: string
-  status?: number
-}
-
-// Helper functions
-export const getErrorMessage = (error: unknown): string => {
-  if (error instanceof Error) return error.message
-  return String(error)
-}
-
-// Auth functions
-export const getCurrentUser = async () => {
-  const { data: { session }, error } = await supabase.auth.getSession()
-  if (error) throw error
-  return session?.user
-}
-
-export const onAuthStateChange = (callback: (session: any) => void) => {
-  return supabase.auth.onAuthStateChange((event, session) => {
-    callback(session)
-  })
+export function validatePassword(password: string): boolean {
+  // At least 8 characters, one uppercase, one lowercase, one number
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,}$/
+  return passwordRegex.test(password)
 } 

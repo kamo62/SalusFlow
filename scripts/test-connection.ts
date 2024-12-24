@@ -1,14 +1,27 @@
-const { createClient } = require('@supabase/supabase-js')
-const { PrismaClient } = require('@prisma/client')
-const dotenv = require('dotenv')
+import { config } from 'dotenv'
+import { createClient } from '@supabase/supabase-js'
+import { PrismaClient } from '@prisma/client'
+import path from 'path'
 
-// Load environment variables
-dotenv.config()
+// Load environment variables from the root .env file
+config({ path: path.resolve(process.cwd(), '.env') })
+
+if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+  throw new Error('Missing env.NEXT_PUBLIC_SUPABASE_URL')
+}
+if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+  throw new Error('Missing env.NEXT_PUBLIC_SUPABASE_ANON_KEY')
+}
 
 // Initialize clients
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  {
+    auth: {
+      persistSession: false,
+    },
+  }
 )
 
 const prisma = new PrismaClient()

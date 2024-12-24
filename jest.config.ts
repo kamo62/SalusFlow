@@ -2,14 +2,13 @@ import type { Config } from 'jest'
 import nextJest from 'next/jest'
 
 const createJestConfig = nextJest({
-  // Provide the path to your Next.js app to load next.config.js and .env files in your test environment
   dir: './',
 })
 
-// Add any custom config to be passed to Jest
 const config: Config = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
   testEnvironment: 'jest-environment-jsdom',
+  moduleDirectories: ['node_modules', '<rootDir>'],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
     '\\.(css|less|sass|scss)$': 'identity-obj-proxy',
@@ -17,7 +16,9 @@ const config: Config = {
   },
   transform: {
     '^.+\\.(ts|tsx)$': ['ts-jest', {
-      tsconfig: 'tsconfig.json',
+      tsconfig: {
+        jsx: 'react-jsx',
+      },
     }],
   },
   testPathIgnorePatterns: [
@@ -30,11 +31,42 @@ const config: Config = {
     '!src/**/*.stories.{ts,tsx}',
     '!src/types/**/*',
   ],
+  coverageThreshold: {
+    global: {
+      branches: 80,
+      functions: 80,
+      lines: 80,
+      statements: 80,
+    },
+    'src/lib/db/': {
+      branches: 90,
+      functions: 90,
+      lines: 90,
+      statements: 90,
+    },
+    'src/lib/auth/': {
+      branches: 90,
+      functions: 90,
+      lines: 90,
+      statements: 90,
+    }
+  },
   coverageDirectory: 'coverage',
   testMatch: [
     '<rootDir>/src/__tests__/**/*.{spec,test}.{ts,tsx}',
+    '<rootDir>/src/lib/**/*.{spec,test}.{ts,tsx}',
   ],
+  modulePathIgnorePatterns: [
+    '<rootDir>/dist/',
+    '<rootDir>/build/',
+  ],
+  watchPlugins: [
+    'jest-watch-typeahead/filename',
+    'jest-watch-typeahead/testname',
+  ],
+  roots: ['<rootDir>/src'],
+  modulePaths: ['<rootDir>/src'],
+  testTimeout: 10000
 }
 
-// createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async
 export default createJestConfig(config) 

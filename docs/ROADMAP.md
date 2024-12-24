@@ -1,104 +1,99 @@
-# Practice Management System - Development Roadmap
+# Development Roadmap
 
-## Version 0.1 (MVP)
-### Core Features
-1. **Patient Management**
-   - Basic patient records
-   - SA ID number validation
-   - Medical history tracking
-   - Document uploads
+## Current Phase (Q1 2024)
+- Core Functionality
+  - ✅ Next.js 14 setup with TypeScript
+  - ✅ Database architecture
+  - ✅ Authentication system
+  - ✅ Practice management
+  - ✅ Basic appointment system
+  - ✅ Patient management
+  - ✅ Offline sync system
 
-2. **Appointment Management**
-   - Staff-only booking interface
-   - Calendar views per practitioner
-   - Basic scheduling system
-   - Appointment status tracking
+## Appointment System (Q1-Q2 2024)
+### Phase 1 - Core Features (Completed)
+- ✅ Basic scheduling
+- ✅ Calendar week view
+- ✅ Status management
+- ✅ Conflict detection
+- ✅ Patient selection
 
-3. **User Management**
-   - Role-based access control
-   - Multi-practice support
-   - Basic user profiles
-   - Audit logging
+### Phase 2 - Advanced Features (In Progress)
+- 🔄 Calendar improvements
+  - Day view
+  - Month view
+  - Resource view (multiple practitioners)
+- 🔄 Recurring appointments
+- 🔄 Appointment reminders
+- 🔄 Waiting list management
 
-4. **Basic Reporting**
-   - Patient demographics
-   - Appointment statistics
-   - Basic operational reports
+### Phase 3 - Integration (Planned)
+- 📅 External calendar sync
+- 📅 SMS notifications
+- 📅 Email reminders
+- 📅 Patient portal integration
 
-## Version 0.2
-### Enhanced Features
-1. **Communication System**
-   - WhatsApp integration
-   - Email notifications
-   - Appointment reminders
-   - Bulk communications
+## Patient Management (Q2 2024)
+### Current Features
+- ✅ Basic patient information
+- ✅ Medical aid handling
+- ✅ Patient search
+- ✅ Basic history
 
-2. **Billing Module**
-   - ICD10 code-specific pricing
-   - Basic invoicing
-   - Payment tracking
-   - Financial reporting
+### Upcoming Features
+- 🔄 Document management
+- 🔄 Treatment plans
+- 🔄 Patient portal
+- 🔄 Communication history
 
-3. **Enhanced Reporting**
-   - Advanced analytics
-   - Custom report builder
-   - Data exports
-   - Dashboard improvements
+## Billing System (Q2-Q3 2024)
+### Phase 1
+- 📅 Invoice generation
+- 📅 Payment tracking
+- 📅 Basic reporting
 
-## Version 0.3
-### Advanced Features
-1. **Medical Aid Integration**
-   - Claims processing
-   - Medical aid verification
-   - Automated submissions
+### Phase 2
+- 📅 Medical aid integration
+- 📅 Online payments
+- 📅 Automated billing
+- 📅 Financial reports
 
-2. **Online Booking**
-   - Patient portal
-   - Self-service booking
-   - Online forms
-   - Patient communication preferences
+## Reporting & Analytics (Q3 2024)
+- 📅 Practice analytics
+- 📅 Financial reporting
+- 📅 Patient statistics
+- 📅 Custom reports
+- 📅 Data visualization
 
-3. **Inventory Management**
-   - Stock tracking
-   - Supplier management
-   - Order processing
-   - Stock alerts
+## System Improvements (Ongoing)
+- 🔄 Performance optimization
+- 🔄 Security enhancements
+- 🔄 UI/UX improvements
+- 🔄 Mobile responsiveness
+- 🔄 Test coverage expansion
 
-## Future Considerations
-- Mobile application
-- Telemedicine integration
-- Advanced analytics
-- API marketplace
-- Integration with medical devices
-- Electronic prescriptions
+## Release Planning
 
-## Development Phases
-### Phase 1: Foundation (Current)
-- Technology stack decisions
-- Architecture design
-- Database schema design
-- Basic infrastructure setup
+### V0.1 (Q1 2024)
+- Core functionality
+- Basic appointment system
+- Patient management
+- Offline capabilities
 
-### Phase 2: MVP Development
-- Core features implementation
-- Testing framework
-- Security implementation
-- Initial deployment setup
+### V0.5 (Q2 2024)
+- Advanced appointment features
+- Document management
+- Basic billing system
+- Enhanced patient management
 
-### Phase 3: Beta Testing
-- User acceptance testing
-- Security audits
+### V0.8 (Q3 2024)
+- Complete billing system
+- Advanced reporting
+- External integrations
 - Performance optimization
-- Documentation
 
-### Phase 4: Launch Preparation
-- Production environment setup
-- Monitoring and logging
-- Backup systems
-- Support system setup
-
-## Notes
-- Timeline to be determined after technology stack decisions
-- Each version will include thorough testing and documentation
-- Feedback loops will be incorporated between versions
-- Security and compliance will be prioritized throughout development 
+### V1.0 (Q4 2024)
+- Full feature set
+- Enterprise readiness
+- Complete documentation
+- Market-ready product

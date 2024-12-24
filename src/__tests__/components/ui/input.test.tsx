@@ -1,6 +1,6 @@
 import React from 'react'
 import { render, screen } from '@/__tests__/utils/test-utils'
-import { Input } from '@/components/ui/input'
+import { Input } from '@/components/ui'
 
 describe('Input', () => {
   it('renders correctly', () => {

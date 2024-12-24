@@ -1,230 +1,109 @@
-import { prisma, supabase, getSQLite } from '../db'
-import { createHash } from 'crypto'
+import { 
+  SyncError, 
+  SyncOptions, 
+  SyncResult, 
+  SyncState, 
+  SyncedRecord,
+  SyncErrorDetails,
+  SyncChange
+} from './types'
+import { pushChanges, pullChanges, resolveConflict, syncTable } from './online'
+import { SQLiteManager } from './offline'
 
-interface SyncOptions {
-  force?: boolean
-  tables?: string[]
-  batchSize?: number
-  onProgress?: (progress: number) => void
-}
+export * from './types'
+export * from './online'
+export { SQLiteManager } from './offline'
 
-// Tables that need to be synced in order
-const SYNC_TABLES = [
-  'users',
-  'doctors',
-  'consultation_types',
-  'doctor_consultation_fees',
-  'patients',
-  'appointments',
-  'consultations',
-  'medical_history',
-]
-
-// Calculate checksum for a record
-const calculateChecksum = (data: any): string => {
-  return createHash('md5')
-    .update(JSON.stringify(data))
-    .digest('hex')
-}
-
-// Handle conflicts
-const handleConflict = async (
-  table: string,
-  localData: any,
-  remoteData: any,
-  syncLogId: string
-) => {
-  const sqlite = getSQLite()
-
-  // Default to keeping local version
-  const resolution = {
-    type: 'local',
-    data: localData,
+export class SyncOrchestrator {
+  private sqlite: SQLiteManager
+  
+  constructor() {
+    this.sqlite = new SQLiteManager()
   }
-
-  // Store conflict for later review
-  sqlite.prepare(`
-    INSERT INTO sync_conflicts (
-      sync_log_id, local_data, remote_data, resolution_data
-    ) VALUES (?, ?, ?, ?)
-  `).run(
-    syncLogId,
-    JSON.stringify(localData),
-    JSON.stringify(remoteData),
-    JSON.stringify(resolution)
-  )
-
-  return resolution
-}
-
-// Sync a single table
-const syncTable = async (
-  table: string,
-  options: SyncOptions = {}
-): Promise<void> => {
-  const sqlite = getSQLite()
-  const { batchSize = 100 } = options
-
-  // Get unsynced changes
-  const unsynced = sqlite
-    .prepare(`SELECT * FROM sync_log WHERE table_name = ? AND synced = 0`)
-    .all(table)
-
-  for (const change of unsynced) {
+  
+  async sync<T extends SyncedRecord>(options: SyncOptions = {}): Promise<SyncResult<T[]>> {
+    const state = this.sqlite.getState()
+    if (state.status === 'syncing') {
+      throw new SyncError('SYNC_IN_PROGRESS', 'sync')
+    }
+    
     try {
-      // Get local record
-      const localRecord = sqlite
-        .prepare(`SELECT * FROM ${table} WHERE id = ?`)
-        .get(change.record_id)
-
-      // Get remote record
-      const { data: remoteRecord } = await supabase
-        .from(table)
-        .select('*')
-        .eq('id', change.record_id)
-        .single()
-
-      // Calculate checksums
-      const localChecksum = calculateChecksum(localRecord)
-      const remoteChecksum = remoteRecord ? calculateChecksum(remoteRecord) : null
-
-      if (localChecksum !== remoteChecksum) {
-        // Handle conflict
-        const resolution = await handleConflict(
-          table,
-          localRecord,
-          remoteRecord,
-          change.id
-        )
-
-        // Update remote if keeping local version
-        if (resolution.type === 'local') {
-          await supabase
-            .from(table)
-            .upsert(resolution.data)
+      // Update state to syncing
+      state.status = 'syncing'
+      
+      // 1. Push local changes
+      const unsynced = await this.sqlite.getUnsynced<T>()
+      const pushResults = await pushChanges(unsynced)
+      
+      // 2. Handle push results
+      for (const result of pushResults) {
+        if (result.success && result.data) {
+          const syncedData = result.data as T
+          await this.sqlite.markAsSynced(syncedData.id)
+        } else if (result.error) {
+          await this.handleSyncError(result.error)
         }
       }
-
-      // Mark as synced
-      sqlite
-        .prepare(`UPDATE sync_log SET synced = 1 WHERE id = ?`)
-        .run(change.id)
-    } catch (error) {
-      console.error(`Sync failed for ${table}:`, error)
-      throw error
-    }
-  }
-}
-
-// Main sync function
-export const sync = async (options: SyncOptions = {}): Promise<void> => {
-  const { force = false, tables = SYNC_TABLES } = options
-
-  try {
-    // Check if sync is needed
-    if (!force) {
-      const lastSync = getSQLite()
-        .prepare(`SELECT MAX(created_at) as last_sync FROM sync_log WHERE synced = 1`)
-        .get()
-
-      const oneWeekAgo = new Date()
-      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7)
-
-      if (lastSync.last_sync && new Date(lastSync.last_sync) > oneWeekAgo) {
-        console.log('Sync not needed yet')
-        return
+      
+      // 3. Pull remote changes
+      const stats = await this.sqlite.getSyncStats()
+      const lastSync = stats.lastSync
+      const tables = options.tables || await this.getActiveTables()
+      const pullResults: T[] = []
+      
+      for (const table of tables) {
+        const result = await pullChanges<T>(table, lastSync!)
+        if (result.success && result.data) {
+          pullResults.push(...(Array.isArray(result.data) ? result.data : [result.data]))
+        } else if (result.error) {
+          await this.handleSyncError(result.error)
+        }
       }
+      
+      // 4. Update sync state
+      state.status = 'idle'
+      state.lastSync = new Date()
+      state.pendingChanges = (await this.sqlite.getUnsynced()).length
+      
+      return {
+        success: true,
+        data: pullResults
+      }
+      
+    } catch (err) {
+      state.status = 'error'
+      state.error = err as SyncError
+      throw err
     }
-
-    // Sync each table in order
-    for (const table of tables) {
-      await syncTable(table, options)
-      options.onProgress?.(((tables.indexOf(table) + 1) / tables.length) * 100)
-    }
-
-    console.log('Sync completed successfully')
-  } catch (error) {
-    console.error('Sync failed:', error)
-    throw error
   }
-}
-
-// Check if sync is needed
-export const needsSync = async (): Promise<boolean> => {
-  const sqlite = getSQLite()
   
-  const unsynced = sqlite
-    .prepare(`SELECT COUNT(*) as count FROM sync_log WHERE synced = 0`)
-    .get()
-
-  return unsynced.count > 0
-}
-
-// Get sync status
-export const getSyncStatus = async () => {
-  const sqlite = getSQLite()
-
-  const status = {
-    pendingChanges: 0,
-    lastSync: null as string | null,
-    conflicts: 0,
-  }
-
-  try {
-    const pending = sqlite
-      .prepare(`SELECT COUNT(*) as count FROM sync_log WHERE synced = 0`)
-      .get()
+  private async handleSyncError(error: SyncError): Promise<void> {
+    // Log error
+    console.error('Sync error:', error)
     
-    const lastSync = sqlite
-      .prepare(`SELECT MAX(created_at) as last_sync FROM sync_log WHERE synced = 1`)
-      .get()
-
-    const conflicts = sqlite
-      .prepare(`SELECT COUNT(*) as count FROM sync_conflicts WHERE resolved_at IS NULL`)
-      .get()
-
-    status.pendingChanges = pending.count
-    status.lastSync = lastSync.last_sync
-    status.conflicts = conflicts.count
-  } catch (error) {
-    console.error('Failed to get sync status:', error)
+    // Add to conflicts if needed
+    if (error.code === 'CONFLICT' && error.details) {
+      const details = error.details as SyncErrorDetails
+      await this.sqlite.addConflict({
+        sync_log_id: `${error.table}:${details.id}`,
+        local_data: JSON.stringify(details.local),
+        remote_data: JSON.stringify(details.remote)
+      })
+    }
   }
-
-  return status
-}
-
-// Resolve a conflict
-export const resolveConflict = async (
-  conflictId: string,
-  resolution: 'local' | 'remote' | 'manual',
-  manualData?: any
-): Promise<void> => {
-  const sqlite = getSQLite()
-
-  try {
-    const conflict = sqlite
-      .prepare(`SELECT * FROM sync_conflicts WHERE id = ?`)
-      .get(conflictId)
-
-    const resolutionData = resolution === 'manual' ? manualData :
-      resolution === 'local' ? JSON.parse(conflict.local_data) :
-      JSON.parse(conflict.remote_data)
-
-    // Update the record
-    await supabase
-      .from(conflict.table_name)
-      .upsert(resolutionData)
-
-    // Mark conflict as resolved
-    sqlite.prepare(`
-      UPDATE sync_conflicts 
-      SET resolved_at = datetime('now'), 
-          resolution_data = ?
-      WHERE id = ?
-    `).run(JSON.stringify(resolutionData), conflictId)
-
-  } catch (error) {
-    console.error('Failed to resolve conflict:', error)
-    throw error
+  
+  private async getActiveTables(): Promise<string[]> {
+    // This could be expanded to dynamically discover tables or read from config
+    return ['practices', 'users', 'settings']
+  }
+  
+  async queueChange<T extends SyncedRecord>(
+    change: Omit<SyncChange<T>, 'id' | 'created_at' | 'synced'>
+  ): Promise<void> {
+    await this.sqlite.queueChange(change)
+  }
+  
+  getState(): SyncState {
+    return this.sqlite.getState()
   }
 } 

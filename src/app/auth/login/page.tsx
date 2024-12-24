@@ -32,9 +32,12 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      await signIn(email, password)
-      router.push('/dashboard')
+      const data = await signIn(email, password)
+      if (data.user) {
+        router.push('/dashboard')
+      }
     } catch (err) {
+      console.error('Sign in error:', err)
       setError(err instanceof Error ? err.message : 'Failed to sign in')
     } finally {
       setLoading(false)
@@ -42,22 +45,24 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-background-secondary dark:bg-background-dark py-section px-4 sm:px-6 lg:px-8">
-      <ThemeToggle />
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background dark:bg-background py-section px-4 sm:px-6 lg:px-8">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
       
       {/* Logo */}
       <div className="mb-8">
-        <h1 className="text-logo font-bold text-primary dark:text-secondary">
+        <h1 className="text-4xl font-bold text-primary dark:text-primary">
           SalusFlow
         </h1>
       </div>
 
       <Card className="w-full max-w-[480px] shadow-sm">
         <CardHeader className="space-y-1 p-6 pb-4">
-          <CardTitle className="text-h2 font-bold tracking-tight text-center text-foreground dark:text-foreground-dark-primary">
+          <CardTitle className="text-2xl font-bold tracking-tight text-center text-foreground dark:text-foreground">
             Sign in to your account
           </CardTitle>
-          <CardDescription className="text-center text-base text-foreground-muted dark:text-foreground-dark-secondary">
+          <CardDescription className="text-center text-base text-muted-foreground dark:text-muted-foreground">
             Enter your email and password to access your account
           </CardDescription>
         </CardHeader>
@@ -65,7 +70,7 @@ export default function LoginPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-4">
               <div>
-                <Label htmlFor="email" className="text-sm font-medium text-foreground dark:text-foreground-dark-primary">
+                <Label htmlFor="email" className="text-sm font-medium text-foreground dark:text-foreground">
                   Email address
                 </Label>
                 <Input
@@ -84,12 +89,12 @@ export default function LoginPage() {
 
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <Label htmlFor="password" className="text-sm font-medium text-foreground dark:text-foreground-dark-primary">
+                  <Label htmlFor="password" className="text-sm font-medium text-foreground dark:text-foreground">
                     Password
                   </Label>
                   <Link
                     href="/auth/reset-password"
-                    className="text-sm font-medium text-primary hover:text-primary/90 dark:text-secondary dark:hover:text-secondary/90"
+                    className="text-sm font-medium text-primary hover:text-primary/90 dark:text-primary dark:hover:text-primary/90"
                   >
                     Forgot password?
                   </Link>
@@ -118,7 +123,7 @@ export default function LoginPage() {
 
             <Button
               type="submit"
-              className="w-full bg-primary text-white hover:bg-primary/90 dark:bg-primary-dark dark:hover:bg-primary-dark/90"
+              className="w-full"
               disabled={loading}
             >
               {loading && (
@@ -128,12 +133,12 @@ export default function LoginPage() {
             </Button>
 
             <div className="text-center text-sm">
-              <span className="text-foreground-muted dark:text-foreground-dark-secondary">
+              <span className="text-muted-foreground dark:text-muted-foreground">
                 Don't have an account?{' '}
               </span>
               <Link
                 href="/auth/register"
-                className="font-medium text-primary hover:text-primary/90 dark:text-secondary dark:hover:text-secondary/90"
+                className="font-medium text-primary hover:text-primary/90 dark:text-primary dark:hover:text-primary/90"
               >
                 Start a free trial
               </Link>

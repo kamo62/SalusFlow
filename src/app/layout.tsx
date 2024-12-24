@@ -1,14 +1,16 @@
-import type { Metadata } from 'next'
+'use client'
+
 import { Inter } from 'next/font/google'
+import { ThemeProvider } from 'next-themes'
+
+import { AuthProvider } from '@/lib/auth/context'
+import { PracticeProvider } from '@/lib/practice/context'
+import { Toaster } from '@/components/ui/toaster'
+import { ErrorBoundary } from '@/components/error-boundary'
+
 import './globals.css'
-import { Providers } from './providers'
 
 const inter = Inter({ subsets: ['latin'] })
-
-export const metadata: Metadata = {
-  title: 'SalusFlow - Practice Management System',
-  description: 'A modern practice management system for medical practices in South Africa',
-}
 
 export default function RootLayout({
   children,
@@ -18,9 +20,21 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <Providers>
-          {children}
-        </Providers>
+        <ErrorBoundary>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <AuthProvider>
+              <PracticeProvider>
+                {children}
+                <Toaster />
+              </PracticeProvider>
+            </AuthProvider>
+          </ThemeProvider>
+        </ErrorBoundary>
       </body>
     </html>
   )

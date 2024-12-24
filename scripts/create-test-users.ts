@@ -30,12 +30,23 @@ const supabaseAdmin = createClient(
 )
 
 async function createUser(email: string, password: string, metadata: { name: string; role: string }) {
+  // Check if user exists
+  const { data: users, error: listError } = await supabaseAdmin.auth.admin.listUsers()
+  if (listError) throw listError
+
+  const existingUser = users.users.find(user => user.email === email)
+  if (existingUser) {
+    console.log(`User ${email} already exists, skipping...`)
+    return existingUser
+  }
+
   const { data, error } = await supabaseAdmin.auth.admin.createUser({
     email,
     password,
     email_confirm: true,
     user_metadata: metadata,
   })
+
   if (error) throw error
   return data
 }

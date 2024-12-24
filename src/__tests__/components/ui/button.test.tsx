@@ -1,6 +1,6 @@
 import React from 'react'
 import { render, screen } from '@/__tests__/utils/test-utils'
-import { Button } from '@/components/ui/button'
+import { Button } from '@/components/ui'
 
 describe('Button', () => {
   it('renders correctly', () => {

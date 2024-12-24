@@ -1,40 +1,286 @@
 import { prisma } from '.'
-import { getSQLite } from '.'
-import { Prisma } from '@prisma/client'
+import { getSQLite } from './index'
+import { PrismaClient } from '@prisma/client'
+import { isSameDay } from 'date-fns'
+import { DatabaseError, QueryStats } from './types'
 
-// Appointment queries
-export const getAppointmentsByDate = async (date: Date) => {
-  // Uses idx_appointments_schedule
-  return prisma.appointment.findMany({
-    where: {
-      scheduledTime: {
-        gte: date,
-        lt: new Date(date.getTime() + 24 * 60 * 60 * 1000),
-      },
-    },
-    include: {
-      patient: true,
-      doctor: true,
-      consultationType: true,
-    },
-  })
+// Get the inferred types from Prisma
+type PrismaAppointment = Awaited<ReturnType<PrismaClient['appointment']['findFirst']>>
+type PrismaPatient = Awaited<ReturnType<PrismaClient['patient']['findFirst']>>
+type PrismaDoctor = Awaited<ReturnType<PrismaClient['doctor']['findFirst']>>
+type PrismaConsultationType = Awaited<ReturnType<PrismaClient['consultationType']['findFirst']>>
+
+// Type definitions
+interface QueryResult<T> {
+  success: boolean
+  data?: T
+  error?: DatabaseError
 }
 
-export const getDoctorAppointments = async (doctorId: string, startDate: Date, endDate: Date) => {
-  // Uses idx_appointments_doctor and idx_appointments_schedule
-  return prisma.appointment.findMany({
-    where: {
-      doctorId,
-      scheduledTime: {
-        gte: startDate,
-        lte: endDate,
+interface AppointmentFilters {
+  startDate?: Date
+  endDate?: Date
+  doctorId?: string
+  patientId?: string
+  status?: string
+}
+
+interface AppointmentWithRelations extends PrismaAppointment {
+  patient: PrismaPatient
+  doctor: PrismaDoctor
+  consultationType: PrismaConsultationType
+}
+
+interface OfflineAppointment {
+  id: string
+  patient_name: string
+  doctor_registration: string
+  consultation_type_name: string
+  scheduled_time: string
+  status: string
+}
+
+interface OfflinePatient {
+  id: string
+  full_name: string
+  id_number: string
+  primary_doctor_registration?: string
+}
+
+interface SyncItem {
+  id: string
+  table_name: string
+  record_id: string
+  operation: string
+  data: string
+  created_at: string
+  has_conflicts: number
+}
+
+// Appointment queries
+export async function getAppointmentsByDate(
+  date: Date
+): Promise<QueryResult<AppointmentWithRelations[]>> {
+  try {
+    const data = await prisma.appointment.findMany({
+      where: {
+        scheduledTime: {
+          gte: date,
+          lt: new Date(date.getTime() + 24 * 60 * 60 * 1000),
+        },
       },
-    },
-    include: {
-      patient: true,
-      consultationType: true,
-    },
-  })
+      include: {
+        patient: true,
+        doctor: true,
+        consultationType: true,
+      },
+    })
+    return { success: true, data }
+  } catch (error) {
+    return {
+      success: false,
+      error: new DatabaseError(
+        'Failed to get appointments',
+        'prisma',
+        'getAppointmentsByDate',
+        error
+      )
+    }
+  }
+}
+
+// SQLite optimized queries
+export function getOfflineAppointments(
+  filters: AppointmentFilters = {}
+): QueryResult<OfflineAppointment[]> {
+  const db = getSQLite()
+  if (!db) {
+    throw new DatabaseError(
+      'SQLite database not initialized',
+      'sqlite',
+      'getOfflineAppointments'
+    )
+  }
+
+  try {
+    const params: any[] = []
+    let whereClause = 'WHERE 1=1'
+
+    if (filters.startDate) {
+      whereClause += ' AND a.scheduled_time >= ?'
+      params.push(filters.startDate.toISOString())
+    }
+
+    if (filters.endDate) {
+      whereClause += ' AND a.scheduled_time < ?'
+      params.push(filters.endDate.toISOString())
+    }
+
+    if (filters.doctorId) {
+      whereClause += ' AND a.doctor_id = ?'
+      params.push(filters.doctorId)
+    }
+
+    if (filters.status) {
+      whereClause += ' AND a.status = ?'
+      params.push(filters.status)
+    }
+
+    const query = `
+      SELECT 
+        a.*,
+        p.full_name as patient_name,
+        d.registration_number as doctor_registration,
+        ct.name as consultation_type_name
+      FROM appointments a
+      JOIN patients p ON a.patient_id = p.id
+      JOIN doctors d ON a.doctor_id = d.id
+      JOIN consultation_types ct ON a.consultation_type_id = ct.id
+      ${whereClause}
+      ORDER BY a.scheduled_time
+    `
+
+    return {
+      success: true,
+      data: db.prepare(query).all(...params) as OfflineAppointment[]
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: new DatabaseError(
+        'Failed to get offline appointments',
+        'sqlite',
+        'getOfflineAppointments',
+        error
+      )
+    }
+  }
+}
+
+export function searchOfflinePatients(
+  searchTerm: string
+): QueryResult<OfflinePatient[]> {
+  const db = getSQLite()
+  if (!db) {
+    throw new DatabaseError(
+      'SQLite database not initialized',
+      'sqlite',
+      'searchOfflinePatients'
+    )
+  }
+
+  try {
+    const query = `
+      SELECT 
+        p.*,
+        d.registration_number as primary_doctor_registration
+      FROM patients p
+      LEFT JOIN doctors d ON p.primary_doctor_id = d.id
+      WHERE p.full_name LIKE ?
+      OR p.id_number LIKE ?
+      LIMIT 50
+    `
+
+    return {
+      success: true,
+      data: db.prepare(query).all(`%${searchTerm}%`, `%${searchTerm}%`) as OfflinePatient[]
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: new DatabaseError(
+        'Failed to search offline patients',
+        'sqlite',
+        'searchOfflinePatients',
+        error
+      )
+    }
+  }
+}
+
+// Sync queries
+export function getPendingSyncItems(): QueryResult<SyncItem[]> {
+  const db = getSQLite()
+  if (!db) {
+    throw new DatabaseError(
+      'SQLite database not initialized',
+      'sqlite',
+      'getPendingSyncItems'
+    )
+  }
+
+  try {
+    const query = `
+      SELECT 
+        sl.*,
+        CASE 
+          WHEN sc.id IS NOT NULL THEN 1 
+          ELSE 0 
+        END as has_conflicts
+      FROM sync_log sl
+      LEFT JOIN sync_conflicts sc ON sl.id = sc.sync_log_id
+      WHERE sl.synced = 0
+      ORDER BY sl.created_at
+      LIMIT 100
+    `
+
+    return {
+      success: true,
+      data: db.prepare(query).all() as SyncItem[]
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: new DatabaseError(
+        'Failed to get pending sync items',
+        'sqlite',
+        'getPendingSyncItems',
+        error
+      )
+    }
+  }
+}
+
+// Performance monitoring queries
+export function getQueryStats(): QueryResult<QueryStats[]> | null {
+  if (process.env.NODE_ENV === 'production') return null
+  
+  const db = getSQLite()
+  if (!db) {
+    throw new DatabaseError(
+      'SQLite database not initialized',
+      'sqlite',
+      'getQueryStats'
+    )
+  }
+
+  try {
+    const query = `
+      SELECT 
+        name as query_name,
+        COUNT(*) as execution_count,
+        AVG(elapsed_time) as avg_time_ms
+      FROM sqlite_stat1
+      GROUP BY name
+      ORDER BY avg_time_ms DESC
+      LIMIT 10
+    `
+
+    return {
+      success: true,
+      data: db.prepare(query).all() as QueryStats[]
+    }
+  } catch (error) {
+    return {
+      success: false,
+      error: new DatabaseError(
+        'Failed to get query stats',
+        'sqlite',
+        'getQueryStats',
+        error
+      )
+    }
+  }
 }
 
 // Patient queries
@@ -82,7 +328,7 @@ export const getAvailableDoctors = async (date: Date) => {
     where: {
       status: 'available',
       NOT: {
-        id: { in: busyDoctorIds.map(d => d.doctorId) },
+        id: { in: busyDoctorIds.map((d: { doctorId: string }) => d.doctorId) },
       },
     },
     include: {
@@ -115,70 +361,79 @@ export const getDoctorConsultations = async (doctorId: string, startDate: Date, 
   })
 }
 
-// SQLite optimized queries for offline mode
-export const getOfflineAppointments = () => {
-  const sqlite = getSQLite()
-  return sqlite.prepare(`
-    SELECT 
-      a.*,
-      p.full_name as patient_name,
-      d.registration_number as doctor_registration,
-      ct.name as consultation_type_name
-    FROM appointments a
-    JOIN patients p ON a.patient_id = p.id
-    JOIN doctors d ON a.doctor_id = d.id
-    JOIN consultation_types ct ON a.consultation_type_id = ct.id
-    WHERE a.scheduled_time >= datetime('now', 'start of day')
-    AND a.scheduled_time < datetime('now', '+1 day')
-    ORDER BY a.scheduled_time
-  `).all()
+interface DoctorId {
+  doctorId: string
 }
 
-export const searchOfflinePatients = (searchTerm: string) => {
-  const sqlite = getSQLite()
-  return sqlite.prepare(`
-    SELECT 
-      p.*,
-      d.registration_number as primary_doctor_registration
-    FROM patients p
-    LEFT JOIN doctors d ON p.primary_doctor_id = d.id
-    WHERE p.full_name LIKE ?
-    OR p.id_number LIKE ?
-    LIMIT 50
-  `).all(`%${searchTerm}%`, `%${searchTerm}%`)
+interface Doctor {
+  id: string
+  name: string
 }
 
-// Sync queries
-export const getPendingSyncItems = () => {
-  const sqlite = getSQLite()
-  return sqlite.prepare(`
-    SELECT 
-      sl.*,
-      CASE 
-        WHEN sc.id IS NOT NULL THEN 1 
-        ELSE 0 
-      END as has_conflicts
-    FROM sync_log sl
-    LEFT JOIN sync_conflicts sc ON sl.id = sc.sync_log_id
-    WHERE sl.synced = 0
-    ORDER BY sl.created_at
-    LIMIT 100
-  `).all()
+interface Appointment {
+  id: string
+  doctorId: string
+  date: string
 }
 
-// Performance monitoring queries
-export const getQueryStats = async () => {
-  if (process.env.NODE_ENV === 'production') return null
-  
-  const sqlite = getSQLite()
-  return sqlite.prepare(`
-    SELECT 
-      name as query_name,
-      COUNT(*) as execution_count,
-      AVG(elapsed_time) as avg_time_ms
-    FROM sqlite_stat1
-    GROUP BY name
-    ORDER BY avg_time_ms DESC
-    LIMIT 10
-  `).all()
+export function getBusyDoctors(date: Date) {
+  const db = getSQLite()
+  if (!db) {
+    throw new Error('SQLite database not initialized')
+  }
+
+  const appointments = db.prepare(`
+    SELECT * FROM appointments
+    WHERE DATE(date) = DATE(?)
+  `).all(date.toISOString()) as Appointment[]
+
+  const busyDoctorIds = appointments.map((a: Appointment) => ({ doctorId: a.doctorId }))
+
+  const doctors = db.prepare(`
+    SELECT * FROM doctors
+    WHERE id IN (${busyDoctorIds.map(() => '?').join(',')})
+  `).all(...busyDoctorIds.map((d: DoctorId) => d.doctorId)) as Doctor[]
+
+  return doctors
+}
+
+export function prepareQuery(query: string) {
+  const db = getSQLite()
+  if (!db) {
+    throw new Error('SQLite database not initialized')
+  }
+  return db.prepare(query)
+}
+
+export function getAppointments() {
+  const db = getSQLite()
+  if (!db) {
+    throw new Error('SQLite database not initialized')
+  }
+  return db.prepare(`
+    SELECT * FROM appointments
+    ORDER BY date DESC
+  `)
+}
+
+export function getPatients() {
+  const db = getSQLite()
+  if (!db) {
+    throw new Error('SQLite database not initialized')
+  }
+  return db.prepare(`
+    SELECT * FROM patients
+    ORDER BY name ASC
+  `)
+}
+
+export function getDoctors() {
+  const db = getSQLite()
+  if (!db) {
+    throw new Error('SQLite database not initialized')
+  }
+  return db.prepare(`
+    SELECT * FROM doctors
+    ORDER BY name ASC
+  `)
 } 

@@ -1,90 +1,69 @@
-# SalusFlow
+# Salusflow
 
-A modern practice management system for medical practices in South Africa, built with Next.js 14, TypeScript, and Supabase.
-
-## Quick Start
-
-```bash
-# Install pnpm if you haven't already
-npm install -g pnpm
-
-# Install dependencies
-pnpm install
-
-# Start development server
-pnpm dev
-```
-
-## Documentation
-
-All project documentation is available in the [docs](./docs) directory:
-
-- [Setup Guide](./docs/SETUP.md) - Get started with development
-- [Project Status](./docs/STATUS.md) - Current progress and next steps
-- [Architecture](./docs/ARCHITECTURE.md) - System design and decisions
-- [Full Documentation](./docs/README.md) - Complete documentation index
-
-## Tech Stack
-
-- **Framework**: Next.js 14
-- **Language**: TypeScript
-- **Database**: Prisma with Supabase (PostgreSQL)
-- **Styling**: Tailwind CSS
-- **UI Components**: Shadcn/ui
-- **Authentication**: Supabase Auth
-- **State Management**: React Context + Hooks
-- **Forms**: React Hook Form
-- **Data Fetching**: React Query
+A modern healthcare practice management system built with Next.js, TypeScript, and Supabase.
 
 ## Features
 
-- ⚡️ Next.js 14 with App Router
-- 💾 Offline-first architecture
-- 🔒 Secure authentication
-- 🎨 Modern UI with dark mode
-- 📱 Fully responsive design
-- 🚀 Optimized performance
-- 🔄 Real-time sync capabilities
-- 📋 Comprehensive practice management
+- **Role-Based Access Control**
+  - Patients: Book and manage appointments
+  - Practitioners: View and manage their appointments
+  - Practice Admins: Manage practitioners, appointments, and practice settings
+  - System Admins: Oversee multiple practices and system-wide settings
 
-## Development
+- **Practice Management**
+  - Multi-practice support
+  - Practitioner management
+  - Working hours configuration
+  - Appointment scheduling and management
 
-```bash
-# Start development server
-pnpm dev
+- **Appointment System**
+  - Real-time availability
+  - Appointment duration management
+  - Automated conflict prevention
+  - Status tracking (Scheduled, Completed, Cancelled)
 
-# Type checking
-pnpm type-check
+- **User Interface**
+  - Modern, responsive design
+  - Practice switching for admins
+  - Calendar views for appointments
+  - Loading states and error handling
 
-# Linting
-pnpm lint
+## Tech Stack
 
-# Formatting
-pnpm format
-```
+- Next.js 14 with App Router
+- TypeScript
+- Supabase (Authentication & Database)
+- Prisma ORM
+- Tailwind CSS
+- shadcn/ui Components
 
-## Project Structure
+## Getting Started
 
-```
-salusflow/
-├── docs/           # Project documentation
-├── src/
-│   ├── app/       # Next.js app directory
-│   ├── components/# React components
-│   ├── lib/       # Utility functions
-│   └── types/     # TypeScript types
-├── prisma/        # Database schema
-└── public/        # Static assets
+1. Clone the repository
+2. Install dependencies: `pnpm install`
+3. Set up environment variables
+4. Initialize Supabase: `pnpm supabase init`
+5. Run migrations: `pnpm prisma migrate dev`
+6. Start development server: `pnpm dev`
+
+## Environment Variables
+
+Create a `.env.local` file with:
+
+```env
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+DATABASE_URL=your_database_url
 ```
 
 ## Contributing
 
-1. Check the [Project Status](./docs/STATUS.md)
-2. Follow the [Setup Guide](./docs/SETUP.md)
-3. Read our development guidelines
-4. Create a new branch
-5. Submit a pull request
+1. Fork the repository
+2. Create a feature branch
+3. Commit changes
+4. Push to the branch
+5. Open a pull request
 
 ## License
 
-This project is private and confidential. 
+MIT License - see LICENSE file for details 

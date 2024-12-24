@@ -6,197 +6,202 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
   directUrl = env("DIRECT_URL")
 }
 
 model User {
-  id            String    @id @default(uuid())
-  email         String    @unique
-  name          String
-  idNumber      String    @unique @map("id_number")
-  phone         String
-  role          UserRole  @default(USER)
-  status        UserStatus @default(ACTIVE)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  doctor        Doctor?
-  practices     PracticeUser[]
+  id                String         @id @default(uuid())
+  email             String         @unique
+  name              String
+  idNumber          String         @unique @map("id_number")
+  phone             String
+  role              UserRole       @default(PATIENT)
+  status            UserStatus     @default(ACTIVE)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+  doctor            Doctor?
+  practices         PracticeUser[]
   uploadedDocuments Document[]
-  
-  @@map("users")
+  AuditLog          AuditLog[]
+
   @@index([email])
   @@index([idNumber])
   @@index([role])
   @@index([status])
+  @@map("users")
 }
 
 model Practice {
-  id            String    @id @default(uuid())
-  name          String
-  registrationNumber String? @unique @map("registration_number")
-  vatNumber     String?   @unique @map("vat_number")
-  address       String
-  phone         String
-  email         String    @unique
-  website       String?
-  logo          String?
-  settings      Json?     // Practice-specific settings like working hours, etc.
-  users         PracticeUser[]
-  doctors       Doctor[]
-  patients      Patient[]
-  appointments  Appointment[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id                 String                @id @default(uuid())
+  name               String
+  registrationNumber String?               @unique @map("registration_number")
+  vatNumber          String?               @unique @map("vat_number")
+  address            String
+  phone              String
+  email              String                @unique
+  website            String?
+  logo               String?
+  settings           Json? // Practice-specific settings like working hours, etc.
+  users              PracticeUser[]
+  doctors            Doctor[]
+  patients           Patient[]
+  appointments       Appointment[]
+  createdAt          DateTime              @default(now())
+  updatedAt          DateTime              @updatedAt
   sharedPatientsFrom SharedPatientAccess[] @relation("SharedFrom")
   sharedPatientsTo   SharedPatientAccess[] @relation("SharedTo")
-  practiceNumber String?   @unique @map("practice_number")
-  bankDetails   Json?     // Bank account details for payments
-  billingSettings Json?   // Billing preferences, invoice templates, etc.
-  documents     Document[]
-  feeSchedules  FeeSchedule[]
+  practiceNumber     String?               @unique @map("practice_number")
+  bankDetails        Json? // Bank account details for payments
+  billingSettings    Json? // Billing preferences, invoice templates, etc.
+  documents          Document[]
+  feeSchedules       FeeSchedule[]
+  ProcedureBundle    ProcedureBundle[]
+  Invoice            Invoice[]
+  AuditLog           AuditLog[]
 
-  @@map("practices")
   @@index([name])
   @@index([email])
   @@index([registrationNumber])
+  @@map("practices")
 }
 
 model PracticeUser {
-  id            String    @id @default(uuid())
-  userId        String
-  practiceId    String
-  role          PracticeRole @default(STAFF)
-  user          User      @relation(fields: [userId], references: [id])
-  practice      Practice  @relation(fields: [practiceId], references: [id])
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id         String       @id @default(uuid())
+  userId     String
+  practiceId String
+  role       PracticeRole @default(STAFF)
+  user       User         @relation(fields: [userId], references: [id])
+  practice   Practice     @relation(fields: [practiceId], references: [id])
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
 
   @@unique([userId, practiceId])
-  @@map("practice_users")
   @@index([userId])
   @@index([practiceId])
   @@index([role])
+  @@map("practice_users")
 }
 
 model Doctor {
-  id                String    @id @default(uuid())
-  userId            String    @unique
+  id                String                   @id @default(uuid())
+  userId            String                   @unique
   practiceId        String
-  user              User      @relation(fields: [userId], references: [id])
-  practice          Practice  @relation(fields: [practiceId], references: [id])
+  user              User                     @relation(fields: [userId], references: [id])
+  practice          Practice                 @relation(fields: [practiceId], references: [id])
   speciality        String
-  hpcsa             String    @unique
-  bhr               String?   @unique
+  hpcsa             String                   @unique
+  bhr               String?                  @unique
   qualifications    String[]
   consultationTypes DoctorConsultationType[]
   appointments      Appointment[]
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  createdAt         DateTime                 @default(now())
+  updatedAt         DateTime                 @updatedAt
 
-  @@map("doctors")
   @@index([practiceId])
   @@index([speciality])
   @@index([userId])
   @@index([hpcsa])
   @@index([bhr])
+  @@map("doctors")
 }
 
 model ConsultationType {
-  id            String    @id @default(uuid())
-  name          String
-  description   String?
-  durationMinutes Int     @default(30)
-  practiceId    String
-  doctors       DoctorConsultationType[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id              String                   @id @default(uuid())
+  name            String
+  description     String?
+  durationMinutes Int                      @default(30)
+  practiceId      String
+  doctors         DoctorConsultationType[]
+  createdAt       DateTime                 @default(now())
+  updatedAt       DateTime                 @updatedAt
 
   @@unique([name, practiceId])
-  @@map("consultation_types")
   @@index([practiceId])
   @@index([durationMinutes])
+  @@map("consultation_types")
 }
 
 model DoctorConsultationType {
-  id               String    @id @default(uuid())
-  doctorId         String
+  id                 String           @id @default(uuid())
+  doctorId           String
   consultationTypeId String
-  fee              Decimal
-  doctor           Doctor    @relation(fields: [doctorId], references: [id])
-  consultationType ConsultationType @relation(fields: [consultationTypeId], references: [id])
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  fee                Decimal
+  doctor             Doctor           @relation(fields: [doctorId], references: [id])
+  consultationType   ConsultationType @relation(fields: [consultationTypeId], references: [id])
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
 
   @@unique([doctorId, consultationTypeId])
-  @@map("doctor_consultation_types")
   @@index([doctorId])
   @@index([consultationTypeId])
   @@index([fee])
+  @@map("doctor_consultation_types")
 }
 
 model Patient {
-  id            String    @id @default(uuid())
-  practiceId    String
-  practice      Practice  @relation(fields: [practiceId], references: [id])
-  firstName     String
-  lastName      String
-  idNumber      String    @map("id_number")
-  dateOfBirth   DateTime
-  gender        Gender
-  email         String?
-  phone         String
-  address       String
-  emergencyContact EmergencyContact?
-  medicalAid    MedicalAid?
-  appointments  Appointment[]
-  medicalHistory MedicalHistory[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  consents       PatientConsent[]
-  sharedAccess   SharedPatientAccess[]
-  bloodType      BloodType?
-  allergies      String[]
-  chronicConditions String[]
-  preferredLanguage String?
-  occupation     String?
-  maritalStatus  MaritalStatus?
-  nationality    String?
-  notes          String?
-  documents     Document[]
-  disabilities  String[]
-  familyDoctor  String?   // External family doctor if any
-  referredBy    String?
-  referredDate  DateTime?
-  lastVisit     DateTime?
-  nextVisit     DateTime?
+  id                       String                    @id @default(uuid())
+  practiceId               String
+  practice                 Practice                  @relation(fields: [practiceId], references: [id])
+  firstName                String
+  lastName                 String
+  idNumber                 String                    @map("id_number")
+  dateOfBirth              DateTime
+  gender                   Gender
+  email                    String?
+  phone                    String
+  address                  String
+  emergencyContact         EmergencyContact?
+  medicalAid               MedicalAid?
+  appointments             Appointment[]
+  medicalHistory           MedicalHistory[]
+  createdAt                DateTime                  @default(now())
+  updatedAt                DateTime                  @updatedAt
+  consents                 PatientConsent[]
+  sharedAccess             SharedPatientAccess[]
+  bloodType                BloodType?
+  allergies                String[]
+  chronicConditions        String[]
+  preferredLanguage        String?
+  occupation               String?
+  maritalStatus            MaritalStatus?
+  nationality              String?
+  notes                    String?
+  documents                Document[]
+  disabilities             String[]
+  familyDoctor             String? // External family doctor if any
+  referredBy               String?
+  referredDate             DateTime?
+  lastVisit                DateTime?
+  nextVisit                DateTime?
   communicationPreferences CommunicationPreference[]
-  riskFactors   RiskFactor[]
-  familyHistory FamilyHistory[]
+  riskFactors              RiskFactor[]
+  familyHistory            FamilyHistory[]
+  Invoice                  Invoice[]
 
   @@unique([email, practiceId])
   @@unique([idNumber, practiceId])
-  @@map("patients")
   @@index([practiceId])
   @@index([firstName, lastName])
   @@index([idNumber])
   @@index([phone])
   @@index([dateOfBirth])
+  @@map("patients")
 }
 
 model EmergencyContact {
-  id          String   @id @default(uuid())
-  patientId   String   @unique
-  patient     Patient  @relation(fields: [patientId], references: [id])
-  name        String
+  id           String   @id @default(uuid())
+  patientId    String   @unique
+  patient      Patient  @relation(fields: [patientId], references: [id])
+  name         String
   relationship String
-  phone       String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  phone        String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  @@map("emergency_contacts")
   @@index([patientId])
+  @@map("emergency_contacts")
 }
 
 model MedicalAid {
@@ -210,192 +215,195 @@ model MedicalAid {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  @@map("medical_aids")
   @@index([patientId])
   @@index([provider])
   @@index([memberNumber])
+  @@map("medical_aids")
 }
 
 model Appointment {
-  id            String    @id @default(uuid())
-  practiceId    String
-  practice      Practice  @relation(fields: [practiceId], references: [id])
-  patientId     String
-  doctorId      String
-  startTime     DateTime
-  endTime       DateTime
-  status        AppointmentStatus @default(SCHEDULED)
-  notes         String?
-  patient       Patient   @relation(fields: [patientId], references: [id])
-  doctor        Doctor    @relation(fields: [doctorId], references: [id])
-  consultation  Consultation?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id           String            @id @default(uuid())
+  practiceId   String
+  practice     Practice          @relation(fields: [practiceId], references: [id])
+  patientId    String
+  doctorId     String
+  startTime    DateTime
+  endTime      DateTime
+  statusId     AppointmentStatus @default(SCHEDULED)
+  notes        String?
+  patient      Patient           @relation(fields: [patientId], references: [id])
+  doctor       Doctor            @relation(fields: [doctorId], references: [id])
+  consultation Consultation?
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
 
-  @@map("appointments")
   @@index([practiceId])
   @@index([patientId])
   @@index([doctorId])
   @@index([startTime, endTime])
-  @@index([status])
+  @@index([statusId])
+  @@map("appointments")
 }
 
 model Consultation {
-  id            String    @id @default(uuid())
-  appointmentId String    @unique
-  appointment   Appointment @relation(fields: [appointmentId], references: [id])
+  id            String                  @id @default(uuid())
+  appointmentId String                  @unique
+  appointment   Appointment             @relation(fields: [appointmentId], references: [id])
   notes         String?
   diagnoses     ConsultationDiagnosis[]
   procedures    ConsultationProcedure[]
   prescription  String?
-  billingStatus BillingStatus @default(PENDING)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  billingStatus BillingStatus           @default(PENDING)
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
   documents     Document[]
+  Invoice       Invoice[]
 
-  @@map("consultations")
   @@index([appointmentId])
   @@index([billingStatus])
+  @@map("consultations")
 }
 
 model ConsultationDiagnosis {
-  id            String    @id @default(uuid())
+  id             String        @id @default(uuid())
   consultationId String
-  diagnosisId   String
-  isPrimary     Boolean   @default(false)
-  notes         String?
-  consultation  Consultation @relation(fields: [consultationId], references: [id])
-  diagnosis     DiagnosisCode @relation(fields: [diagnosisId], references: [id])
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  diagnosisId    String
+  isPrimary      Boolean       @default(false)
+  notes          String?
+  consultation   Consultation  @relation(fields: [consultationId], references: [id])
+  diagnosis      DiagnosisCode @relation(fields: [diagnosisId], references: [id])
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   @@unique([consultationId, diagnosisId])
-  @@map("consultation_diagnoses")
   @@index([consultationId])
   @@index([diagnosisId])
+  @@map("consultation_diagnoses")
 }
 
 model ConsultationProcedure {
-  id            String    @id @default(uuid())
+  id             String           @id @default(uuid())
   consultationId String
-  procedureId   String
-  bundleId      String?   // If part of a bundle
-  quantity      Int       @default(1)
-  notes         String?
-  fee           Decimal
-  modifiers     String[]  // Procedure modifiers (e.g., bilateral, assistant surgeon)
-  consultation  Consultation @relation(fields: [consultationId], references: [id])
-  procedure     ProcedureCode @relation(fields: [procedureId], references: [id])
-  bundle        ProcedureBundle? @relation(fields: [bundleId], references: [id])
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  procedureId    String
+  bundleId       String? // If part of a bundle
+  quantity       Int              @default(1)
+  notes          String?
+  fee            Decimal
+  modifiers      String[] // Procedure modifiers (e.g., bilateral, assistant surgeon)
+  consultation   Consultation     @relation(fields: [consultationId], references: [id])
+  procedure      ProcedureCode    @relation(fields: [procedureId], references: [id])
+  bundle         ProcedureBundle? @relation(fields: [bundleId], references: [id])
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
 
   @@unique([consultationId, procedureId])
-  @@map("consultation_procedures")
   @@index([consultationId])
   @@index([procedureId])
   @@index([bundleId])
+  @@map("consultation_procedures")
 }
 
 model MedicalHistory {
-  id            String    @id @default(uuid())
-  patientId     String
-  patient       Patient   @relation(fields: [patientId], references: [id])
-  condition     String
-  notes         String?
-  diagnosedAt   DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id          String    @id @default(uuid())
+  patientId   String
+  patient     Patient   @relation(fields: [patientId], references: [id])
+  condition   String
+  notes       String?
+  diagnosedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  @@map("medical_histories")
   @@index([patientId])
   @@index([condition])
   @@index([diagnosedAt])
+  @@map("medical_histories")
 }
 
 model SyncLog {
-  id            String    @id @default(uuid())
-  practiceId    String
-  tableName     String
-  recordId      String
-  operation     SyncOperation
-  status        SyncStatus @default(PENDING)
-  localChecksum String
+  id             String          @id @default(uuid())
+  practiceId     String
+  tableName      String
+  recordId       String
+  operation      SyncOperation
+  status         SyncStatus      @default(PENDING)
+  localChecksum  String
   remoteChecksum String?
   conflictStatus ConflictStatus?
   resolutionType ResolutionType?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 
-  @@map("sync_logs")
   @@index([practiceId])
   @@index([tableName])
   @@index([recordId])
   @@index([status])
   @@index([conflictStatus])
   @@index([createdAt])
+  @@map("sync_logs")
 }
 
 model PatientConsent {
-  id            String    @id @default(uuid())
-  patientId     String
-  patient       Patient   @relation(fields: [patientId], references: [id])
-  consentType   ConsentType
-  granted       Boolean   @default(false)
-  validFrom     DateTime  @default(now())
-  validUntil    DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id          String      @id @default(uuid())
+  patientId   String
+  patient     Patient     @relation(fields: [patientId], references: [id])
+  consentType ConsentType
+  granted     Boolean     @default(false)
+  validFrom   DateTime    @default(now())
+  validUntil  DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
 
-  @@map("patient_consents")
   @@index([patientId])
   @@index([consentType])
   @@index([granted])
+  @@map("patient_consents")
 }
 
 model SharedPatientAccess {
-  id            String    @id @default(uuid())
-  patientId     String
+  id               String                 @id @default(uuid())
+  patientId        String
   sourcePracticeId String
   targetPracticeId String
-  patient       Patient   @relation(fields: [patientId], references: [id])
-  sourcePractice Practice @relation("SharedFrom", fields: [sourcePracticeId], references: [id])
-  targetPractice Practice @relation("SharedTo", fields: [targetPracticeId], references: [id])
-  accessLevel   PatientDataAccessLevel
-  grantedAt     DateTime  @default(now())
-  expiresAt     DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  patient          Patient                @relation(fields: [patientId], references: [id])
+  sourcePractice   Practice               @relation("SharedFrom", fields: [sourcePracticeId], references: [id])
+  targetPractice   Practice               @relation("SharedTo", fields: [targetPracticeId], references: [id])
+  accessLevel      PatientDataAccessLevel
+  grantedAt        DateTime               @default(now())
+  expiresAt        DateTime?
+  createdAt        DateTime               @default(now())
+  updatedAt        DateTime               @updatedAt
 
   @@unique([patientId, sourcePracticeId, targetPracticeId])
-  @@map("shared_patient_access")
   @@index([patientId])
   @@index([sourcePracticeId])
   @@index([targetPracticeId])
   @@index([accessLevel])
+  @@map("shared_patient_access")
 }
 
 enum UserRole {
-  SUPERADMIN    // Can manage all practices
-  ADMIN         // Can manage specific practices
-  DOCTOR
-  USER
+  PATIENT
+  PRACTITIONER
+  PRACTICE_ADMIN
+  SYSTEM_ADMIN
 }
 
 enum PracticeRole {
-  OWNER         // Practice owner
-  ADMIN         // Practice administrator
-  DOCTOR        // Doctor in the practice
-  STAFF         // General staff
-  RECEPTIONIST  // Front desk
-  BILLING       // Billing staff
+  OWNER // Practice owner
+  ADMIN // Practice administrator
+  DOCTOR // Doctor in the practice
+  STAFF // General staff
+  RECEPTIONIST // Front desk
+  BILLING // Billing staff
 }
 
 enum AppointmentStatus {
   SCHEDULED
   CONFIRMED
-  CANCELLED
+  IN_PROGRESS
   COMPLETED
+  CANCELLED
+  NO_SHOW
 }
 
 enum SyncOperation {
@@ -436,16 +444,16 @@ enum Gender {
 }
 
 enum ConsentType {
-  DATA_SHARING           // Consent to share data with other practices
-  MARKETING             // Consent for marketing communications
-  RESEARCH              // Consent for anonymized research data
-  THIRD_PARTY_SHARING   // Consent to share with third parties (specialists, etc.)
+  DATA_SHARING // Consent to share data with other practices
+  MARKETING // Consent for marketing communications
+  RESEARCH // Consent for anonymized research data
+  THIRD_PARTY_SHARING // Consent to share with third parties (specialists, etc.)
 }
 
 enum PatientDataAccessLevel {
-  BASIC          // Just demographic info
-  MEDICAL        // Include medical history
-  FULL           // Full access including notes and sensitive info
+  BASIC // Just demographic info
+  MEDICAL // Include medical history
+  FULL // Full access including notes and sensitive info
 }
 
 enum BloodType {
@@ -470,178 +478,182 @@ enum MaritalStatus {
 }
 
 enum ProcedureType {
-  CPT           // Current Procedural Terminology
-  NAPPI         // National Pharmaceutical Product Index
-  CUSTOM        // Practice-specific procedures
+  CPT // Current Procedural Terminology
+  NAPPI // National Pharmaceutical Product Index
+  CUSTOM // Practice-specific procedures
 }
 
 enum BillingStatus {
-  PENDING       // Not yet billed
-  BILLED        // Invoice generated
-  SUBMITTED     // Submitted to medical aid
-  PAID          // Payment received
-  PARTIAL       // Partial payment received
-  REJECTED      // Claim rejected
-  CANCELLED     // Billing cancelled
+  PENDING // Not yet billed
+  BILLED // Invoice generated
+  SUBMITTED // Submitted to medical aid
+  PAID // Payment received
+  PARTIAL // Partial payment received
+  REJECTED // Claim rejected
+  CANCELLED // Billing cancelled
 }
 
 model DiagnosisCode {
-  id            String    @id @default(uuid())
-  code          String    // ICD-10 code
+  id            String                  @id @default(uuid())
+  code          String // ICD-10 code
   description   String
   category      String
   consultations ConsultationDiagnosis[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime                @default(now())
+  updatedAt     DateTime                @updatedAt
 
   @@unique([code])
-  @@map("diagnosis_codes")
   @@index([code])
   @@index([category])
+  @@map("diagnosis_codes")
 }
 
 model ProcedureCode {
-  id            String    @id @default(uuid())
-  code          String    // CPT/NAPPI code
-  description   String
-  category      String
-  type          ProcedureType
-  consultations ConsultationProcedure[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id              String                  @id @default(uuid())
+  code            String // CPT/NAPPI code
+  description     String
+  category        String
+  type            ProcedureType
+  consultations   ConsultationProcedure[]
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+  BundleProcedure BundleProcedure[]
+  InvoiceItem     InvoiceItem[]
+  FeeScheduleItem FeeScheduleItem[]
 
   @@unique([code])
-  @@map("procedure_codes")
   @@index([code])
   @@index([category])
   @@index([type])
+  @@map("procedure_codes")
 }
 
 model ProcedureBundle {
-  id            String    @id @default(uuid())
-  name          String
-  description   String
-  practiceId    String
-  practice      Practice  @relation(fields: [practiceId], references: [id])
-  procedures    BundleProcedure[]
-  fee           Decimal   // Bundle price (can be different from sum of individual procedures)
-  active        Boolean   @default(true)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id                    String                  @id @default(uuid())
+  name                  String
+  description           String
+  practiceId            String
+  practice              Practice                @relation(fields: [practiceId], references: [id])
+  procedures            BundleProcedure[]
+  fee                   Decimal // Bundle price (can be different from sum of individual procedures)
+  active                Boolean                 @default(true)
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+  ConsultationProcedure ConsultationProcedure[]
 
   @@unique([name, practiceId])
-  @@map("procedure_bundles")
   @@index([practiceId])
+  @@map("procedure_bundles")
 }
 
 model BundleProcedure {
-  id            String    @id @default(uuid())
-  bundleId      String
-  procedureId   String
-  quantity      Int       @default(1)
-  bundle        ProcedureBundle @relation(fields: [bundleId], references: [id])
-  procedure     ProcedureCode @relation(fields: [procedureId], references: [id])
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id          String          @id @default(uuid())
+  bundleId    String
+  procedureId String
+  quantity    Int             @default(1)
+  bundle      ProcedureBundle @relation(fields: [bundleId], references: [id])
+  procedure   ProcedureCode   @relation(fields: [procedureId], references: [id])
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
 
   @@unique([bundleId, procedureId])
-  @@map("bundle_procedures")
   @@index([bundleId])
   @@index([procedureId])
+  @@map("bundle_procedures")
 }
 
 model Invoice {
-  id            String    @id @default(uuid())
-  practiceId    String
-  practice      Practice  @relation(fields: [practiceId], references: [id])
-  patientId     String
-  patient       Patient   @relation(fields: [patientId], references: [id])
+  id             String        @id @default(uuid())
+  practiceId     String
+  practice       Practice      @relation(fields: [practiceId], references: [id])
+  patientId      String
+  patient        Patient       @relation(fields: [patientId], references: [id])
   consultationId String?
-  consultation  Consultation? @relation(fields: [consultationId], references: [id])
-  number        String    // Invoice number
-  date          DateTime  @default(now())
-  dueDate       DateTime
-  subtotal      Decimal
-  tax           Decimal
-  total         Decimal
-  status        InvoiceStatus @default(DRAFT)
-  items         InvoiceItem[]
-  payments      Payment[]
-  notes         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  documents     Document[]
+  consultation   Consultation? @relation(fields: [consultationId], references: [id])
+  number         String // Invoice number
+  date           DateTime      @default(now())
+  dueDate        DateTime
+  subtotal       Decimal
+  tax            Decimal
+  total          Decimal
+  status         InvoiceStatus @default(DRAFT)
+  items          InvoiceItem[]
+  payments       Payment[]
+  notes          String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  documents      Document[]
 
   @@unique([number, practiceId])
-  @@map("invoices")
   @@index([practiceId])
   @@index([patientId])
   @@index([consultationId])
   @@index([status])
   @@index([date])
+  @@map("invoices")
 }
 
 model InvoiceItem {
-  id            String    @id @default(uuid())
-  invoiceId     String
-  invoice       Invoice   @relation(fields: [invoiceId], references: [id])
-  description   String
-  quantity      Int
-  unitPrice     Decimal
-  discount      Decimal   @default(0)
-  tax           Decimal   @default(0)
-  total         Decimal
-  procedureId   String?
-  procedure     ProcedureCode? @relation(fields: [procedureId], references: [id])
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id          String         @id @default(uuid())
+  invoiceId   String
+  invoice     Invoice        @relation(fields: [invoiceId], references: [id])
+  description String
+  quantity    Int
+  unitPrice   Decimal
+  discount    Decimal        @default(0)
+  tax         Decimal        @default(0)
+  total       Decimal
+  procedureId String?
+  procedure   ProcedureCode? @relation(fields: [procedureId], references: [id])
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
 
-  @@map("invoice_items")
   @@index([invoiceId])
   @@index([procedureId])
+  @@map("invoice_items")
 }
 
 model Payment {
-  id            String    @id @default(uuid())
-  invoiceId     String
-  invoice       Invoice   @relation(fields: [invoiceId], references: [id])
-  amount        Decimal
-  method        PaymentMethod
-  reference     String?   // Payment reference number
-  date          DateTime  @default(now())
-  notes         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id        String        @id @default(uuid())
+  invoiceId String
+  invoice   Invoice       @relation(fields: [invoiceId], references: [id])
+  amount    Decimal
+  method    PaymentMethod
+  reference String? // Payment reference number
+  date      DateTime      @default(now())
+  notes     String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
 
-  @@map("payments")
   @@index([invoiceId])
   @@index([method])
   @@index([date])
+  @@map("payments")
 }
 
 model AuditLog {
-  id            String    @id @default(uuid())
-  practiceId    String
-  practice      Practice  @relation(fields: [practiceId], references: [id])
-  userId        String
-  user          User      @relation(fields: [userId], references: [id])
-  action        AuditAction
-  entityType    String    // The type of entity being audited (e.g., "Patient", "Invoice")
-  entityId      String    // The ID of the entity being audited
-  oldData       Json?     // Previous state
-  newData       Json?     // New state
-  metadata      Json?     // Additional context
-  ipAddress     String?
-  userAgent     String?
-  createdAt     DateTime  @default(now())
+  id         String      @id @default(uuid())
+  practiceId String
+  practice   Practice    @relation(fields: [practiceId], references: [id])
+  userId     String
+  user       User        @relation(fields: [userId], references: [id])
+  action     AuditAction
+  entityType String // The type of entity being audited (e.g., "Patient", "Invoice")
+  entityId   String // The ID of the entity being audited
+  oldData    Json? // Previous state
+  newData    Json? // New state
+  metadata   Json? // Additional context
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime    @default(now())
 
-  @@map("audit_logs")
   @@index([practiceId])
   @@index([userId])
   @@index([action])
   @@index([entityType])
   @@index([entityId])
   @@index([createdAt])
+  @@map("audit_logs")
 }
 
 enum InvoiceStatus {
@@ -677,33 +689,33 @@ enum AuditAction {
   PRESCRIPTION_MODIFY
   DIAGNOSIS_ADD
   DIAGNOSIS_MODIFY
-  
+
   INVOICE_CREATE
   INVOICE_MODIFY
   PAYMENT_RECORD
   PAYMENT_VOID
-  
+
   APPOINTMENT_SCHEDULE
   APPOINTMENT_MODIFY
   PATIENT_REGISTER
   PATIENT_ARCHIVE
-  
+
   DOCUMENT_UPLOAD
   DOCUMENT_ACCESS
   DOCUMENT_SHARE
   DOCUMENT_DELETE
-  
+
   SHARE_INITIATE
   SHARE_ACCEPT
   SHARE_REVOKE
-  
+
   EMAIL_SEND
   SMS_SEND
-  
+
   REPORT_GENERATE
   DATA_EXPORT
   DATA_IMPORT
-  
+
   SETTINGS_CHANGE
   USER_INVITE
   USER_SUSPEND
@@ -712,63 +724,62 @@ enum AuditAction {
 }
 
 model FeeSchedule {
-  id            String    @id @default(uuid())
-  practiceId    String
-  practice      Practice  @relation(fields: [practiceId], references: [id])
-  name          String    // e.g., "Discovery Health 2024", "Private Rates 2024"
-  year          Int
-  isDefault     Boolean   @default(false)
-  items         FeeScheduleItem[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id         String            @id @default(uuid())
+  practiceId String
+  practice   Practice          @relation(fields: [practiceId], references: [id])
+  name       String // e.g., "Discovery Health 2024", "Private Rates 2024"
+  year       Int
+  isDefault  Boolean           @default(false)
+  items      FeeScheduleItem[]
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
 
   @@unique([practiceId, name, year])
-  @@map("fee_schedules")
   @@index([practiceId])
   @@index([year])
+  @@map("fee_schedules")
 }
 
 model FeeScheduleItem {
-  id            String    @id @default(uuid())
+  id            String        @id @default(uuid())
   scheduleId    String
-  schedule      FeeSchedule @relation(fields: [scheduleId], references: [id])
+  schedule      FeeSchedule   @relation(fields: [scheduleId], references: [id])
   procedureId   String
   procedure     ProcedureCode @relation(fields: [procedureId], references: [id])
   fee           Decimal
-  modifierRules Json?     // Rules for fee modifications (e.g., {"bilateral": 1.5})
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  modifierRules Json? // Rules for fee modifications (e.g., {"bilateral": 1.5})
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   @@unique([scheduleId, procedureId])
-  @@map("fee_schedule_items")
   @@index([scheduleId])
   @@index([procedureId])
+  @@map("fee_schedule_items")
 }
 
 model Document {
-  id            String    @id @default(uuid())
-  practiceId    String
-  practice      Practice  @relation(fields: [practiceId], references: [id])
-  type          DocumentType
-  category      DocumentCategory
-  title         String
-  description   String?
-  fileUrl       String    // URL to stored file
-  fileType      String    // MIME type
-  fileSize      Int       // Size in bytes
-  metadata      Json?     // Additional metadata
-  patientId     String?
-  patient       Patient?  @relation(fields: [patientId], references: [id])
+  id             String           @id @default(uuid())
+  practiceId     String
+  practice       Practice         @relation(fields: [practiceId], references: [id])
+  type           DocumentType
+  category       DocumentCategory
+  title          String
+  description    String?
+  fileUrl        String // URL to stored file
+  fileType       String // MIME type
+  fileSize       Int // Size in bytes
+  metadata       Json? // Additional metadata
+  patientId      String?
+  patient        Patient?         @relation(fields: [patientId], references: [id])
   consultationId String?
-  consultation  Consultation? @relation(fields: [consultationId], references: [id])
-  invoiceId     String?
-  invoice       Invoice?  @relation(fields: [invoiceId], references: [id])
-  uploadedById  String
-  uploadedBy    User      @relation(fields: [uploadedById], references: [id])
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  consultation   Consultation?    @relation(fields: [consultationId], references: [id])
+  invoiceId      String?
+  invoice        Invoice?         @relation(fields: [invoiceId], references: [id])
+  uploadedById   String
+  uploadedBy     User             @relation(fields: [uploadedById], references: [id])
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
 
-  @@map("documents")
   @@index([practiceId])
   @@index([type])
   @@index([category])
@@ -776,6 +787,7 @@ model Document {
   @@index([consultationId])
   @@index([invoiceId])
   @@index([uploadedById])
+  @@map("documents")
 }
 
 enum DocumentType {
@@ -794,29 +806,29 @@ enum DocumentType {
 }
 
 enum DocumentCategory {
-  MEDICAL         // Medical records, clinical notes
-  ADMINISTRATIVE  // Forms, consents
-  FINANCIAL       // Invoices, receipts
-  IDENTIFICATION  // ID documents, medical aid cards
-  COMMUNICATION   // Letters, referrals
+  MEDICAL // Medical records, clinical notes
+  ADMINISTRATIVE // Forms, consents
+  FINANCIAL // Invoices, receipts
+  IDENTIFICATION // ID documents, medical aid cards
+  COMMUNICATION // Letters, referrals
   OTHER
 }
 
 model FamilyHistory {
-  id            String    @id @default(uuid())
-  patientId     String
-  patient       Patient   @relation(fields: [patientId], references: [id])
-  condition     String
-  relationship  FamilyRelation
-  diagnosedAge  Int?
-  notes         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id           String         @id @default(uuid())
+  patientId    String
+  patient      Patient        @relation(fields: [patientId], references: [id])
+  condition    String
+  relationship FamilyRelation
+  diagnosedAge Int?
+  notes        String?
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
 
-  @@map("family_histories")
   @@index([patientId])
   @@index([condition])
   @@index([relationship])
+  @@map("family_histories")
 }
 
 enum FamilyRelation {
@@ -852,4 +864,4 @@ enum RiskFactor {
   SUBSTANCE_ABUSE
   PREGNANCY
   OTHER
-} 
+}
